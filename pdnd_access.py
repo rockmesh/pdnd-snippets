@@ -217,8 +217,8 @@ if __name__ == "__main__":
     private_key = load_private_key("private_key.pem")
 
     response = chiama_servizio_pdnd(
-        url="https://modipa.mur.gov.it/govway/rest/in/MUR-INTRA-PDND/consultazioneTitoli/v2/anis/v2/academic-qualifications",
-        body={"tax_code": "MSRNDR"},
+        url="URL_SERVIZIO_CHE_VUOI_CHIAMARE",
+        body={"param1": "value1"},
         access_token="IL_TUO_VOUCHER_OTTENUTO_DALLA_PDND",  # vedi client_credentials
         config=config,
         private_key=private_key,
