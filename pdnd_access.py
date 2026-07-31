@@ -104,7 +104,7 @@ def crea_agid_jwt_tracking_evidence(
     kid: str,
     alg: str,
     private_key: str,
-    validity_seconds: int = 60,
+    validity_seconds: int = 600,
 ) -> str:
     """
     Genera il JWS da inserire nell'header 'Agid-JWT-TrackingEvidence'
