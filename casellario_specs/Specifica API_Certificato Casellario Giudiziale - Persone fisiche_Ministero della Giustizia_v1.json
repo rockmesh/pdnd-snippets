@@ -1,0 +1,1330 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "API Certificazione",
+    "description": "API per la gestione delle richieste di certificazione asincrone per le persone fisiche.\n<br><br>Pattern Model applicati:<br>- HTTPS per tutte le chiamate [ID_AUTH_CHANNEL_01].<br>- Autenticazione con voucher PDND [ID_AUTH_REST_01].<br>- Inoltro dati tracciati nel dominio del Fruitore REST senza correlazione [AUDIT_REST_02].<br>- Integrità della richiesta del payload messaggio REST [INTEGRITY_REST_02].<br><br><b>Rate limiting</b><br>\nLe chiamate sono soggette a rate limit applicato dal gateway.<br>\nHeader di risposta (metrica “Numero Richieste”):<br>\n- X-RateLimit-Limit: quota massima nell’intervallo configurato<br>\n- X-RateLimit-Remaining: richieste rimanenti nella finestra corrente<br>\n- X-RateLimit-Reset: secondi mancanti alla prossima finestra/reset<br>\nIn caso di superamento della policy, il gateway restituisce HTTP 429 (Too Many Requests) e include l’header:<br>\n- Retry-After: secondi dopo i quali il client può riprovare<br>\n\n## Pattern di interoperabilità utilizzati\n\n- `AUDIT_REST_01` - Inoltro dati tracciati nel dominio del Fruitore.\n- `INTEGRITY_REST_02` - Integrità del payload delle request REST in PDND.",
+    "version": "1.0.0",
+    "x-todo": "Fix URL for ToS",
+    "termsOfService": "https://www.giustizia.it/terms-of-service",
+    "x-api-id": "api-certificazione-persone-fisiche",
+    "contact": {
+      "name": "Ministero della Giustizia",
+      "url": "www.giustizia.it",
+      "email": "supporto.pdnd@giustizia.it"
+    },
+    "x-summary": "persona fisica"
+  },
+  "x-todo": "Fix servers URL",
+  "servers": [
+    {
+      "url": "https://interoperabilita.giustizia.it/channel01/govway/rest/in/MinisteroGiustizia/RichiestaCertificazionePersoneFisiche/v1",
+      "description": "Endpoint GovWay produzione"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Servizio di Polling",
+      "description": "Servizio per il recupero degli esiti delle elaborazioni asincrone delle richieste di certificazione per le persone fisiche"
+    },
+    {
+      "name": "Richiesta Certificazione",
+      "description": "Gestisce le richieste di certificazione per persone fisiche"
+    },
+    {
+      "name": "Risposta Certificazione",
+      "description": "Gestisce le risposte di certificazione per persone fisiche"
+    },
+    {
+      "name": "status",
+      "description": "Health check"
+    }
+  ],
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/richiesta-certificazione": {
+      "post": {
+        "tags": [
+          "Richiesta Certificazione"
+        ],
+        "summary": "Richiesta certificazione persone fisiche",
+        "description": "Gestisce le richieste di certificazione per le persone fisiche.",
+        "operationId": "richiestaCertificazionePersoneFisiche",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Agid-JWT-TrackingEvidence"
+          },
+          {
+            "$ref": "#/components/parameters/Agid-JWT-Signature"
+          },
+          {
+            "$ref": "#/components/parameters/Digest"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RichiestaServizioDatiNominativoPersonaFisica"
+              },
+              "examples": {
+                "Esempio di richiesta per persona fisica": {
+                  "description": "Esempio di richiesta per persona fisica",
+                  "value": {
+                    "datiRichiesta": {
+                      "identificativoRichiesta": "TEST_CG_001",
+                      "dataRichiesta": "2025-02-28T16:42:00+01:00"
+                    },
+                    "nominativiRichiesti": [
+                      {
+                        "progressivoNominativo": "1",
+                        "datiNominativo": {
+                          "cognome": "ROSSI",
+                          "nome": "MARIO",
+                          "sesso": "M",
+                          "cf": "RSSMRA80A01H501U",
+                          "cui": null,
+                          "dataNascita": "1980-01-01",
+                          "annoNascita": 1980,
+                          "codiceCatastoComuneItaliano": "H501",
+                          "codiceCatastoStato": "Z000"
+                        },
+                        "altriDati": {
+                          "infoDaStampare": "infoDaStampare di prova",
+                          "infoDaRestituire": null,
+                          "linguaTedesca": false,
+                          "numeroProtocollo": "1",
+                          "dataProtocollo": "2025-07-13"
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Request accepted",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/Cache-Control"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AckDiAccettazione"
+                },
+                "examples": {
+                  "Esempio risposta accettazione.": {
+                    "description": "l'identificativoRichiesta nella risposta corrisponde a quello fornito nella richiesta",
+                    "value": {
+                      "identificativoRichiesta": "TEST_CG_001"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/risposta-certificazione/{identificativoRisposta}": {
+      "get": {
+        "tags": [
+          "Risposta Certificazione"
+        ],
+        "summary": "Risposta certificazione persone fisiche",
+        "description": "Gestisce le risposte di certificazione per le persone fisiche.",
+        "operationId": "rispostaCertificazionePersoneFisiche",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Agid-JWT-TrackingEvidence"
+          },
+          {
+            "$ref": "#/components/parameters/Agid-JWT-Signature"
+          },
+          {
+            "$ref": "#/components/parameters/Digest"
+          },
+          {
+            "name": "identificativoRisposta",
+            "in": "path",
+            "description": "Identificativo univoco della risposta (ottenuto da /poll)",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/Cache-Control"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RispostaServizioDatiNominativoPersonaFisica"
+                },
+                "examples": {
+                  "Esempio risposta per persona fisica.": {
+                    "description": "Il pdf del certficato in base64 è stato troncato per motivi di spazio",
+                    "value": {
+                      "esitoServizio": {
+                        "codice": "000",
+                        "descrizione": "Nessun errore riscontrato."
+                      },
+                      "datiRichiesta": {
+                        "identificativoRichiesta": "TEST_CG_001",
+                        "dataRichiesta": "2025-02-28T16:42:00+01:00"
+                      },
+                      "risposta": [
+                        {
+                          "nominativoRichiesto": {
+                            "progressivoNominativo": "1",
+                            "datiNominativo": {
+                              "cognome": "ROSSI",
+                              "nome": "MARIO",
+                              "sesso": "M",
+                              "cf": "RSSMRA80A01H501U",
+                              "cui": null,
+                              "dataNascita": "1980-01-01",
+                              "annoNascita": null,
+                              "codiceCatastoComuneItaliano": "H501",
+                              "codiceCatastoStato": "Z000"
+                            },
+                            "altriDati": {
+                              "infoDaStampare": "infoDaStampare di prova",
+                              "infoDaRestituire": null,
+                              "linguaTedesca": false,
+                              "numeroProtocollo": "1",
+                              "dataProtocollo": "2025-07-13"
+                            }
+                          },
+                          "datiRisposta": {
+                            "esito": {
+                              "codice": "003",
+                              "descrizione": "Per il nominativo richiesto il certificato prodotto risulta nullo."
+                            },
+                            "certificato": "JVBERi0xLjQK",
+                            "listaSinonimi": [],
+                            "listaOmonimi": []
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/esiti": {
+      "get": {
+        "tags": [
+          "Servizio di Polling"
+        ],
+        "summary": "Recupero elenco esiti",
+        "description": "Recupera una lista di esiti appartenenti all'ente chiamante per una specifica finalità a partire dall'offset.Restituisce un massimo di 'size' esiti con offset maggiore di quello specificato in input. Gli offset sono numeri interi progressivi senza dicontinuità.",
+        "operationId": "poll",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Agid-JWT-TrackingEvidence"
+          },
+          {
+            "$ref": "#/components/parameters/Agid-JWT-Signature"
+          },
+          {
+            "$ref": "#/components/parameters/Digest"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Offset di partenza per il recupero degli esiti",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 0,
+              "maximum": 9223372036854776000,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "Numero massimo di elementi da restituire",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/Cache-Control"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RispostaPolling"
+                },
+                "examples": {
+                  "Esempio risposta che esaurisce gli esiti in una chiamata": {
+                    "description": "Esempio risposta che esaurisce gli esiti in una chiamata",
+                    "value": {
+                      "esiti": [
+                        {
+                          "identificativoRichiesta": "TEST_CG_004",
+                          "identificativoRisposta": "f9836d66-9640-4182-95cf-7fdadf1b3f45",
+                          "stato": "COMPLETATO",
+                          "offset": 4
+                        }
+                      ],
+                      "lastOffset": 4
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "206": {
+            "description": "Partial Content",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/Cache-Control"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RispostaPolling"
+                },
+                "examples": {
+                  "Esempio risposta che non esaurisce gli esiti": {
+                    "description": "Esempio risposta che non esaurisce gli esiti",
+                    "value": {
+                      "esiti": [
+                        {
+                          "identificativoRichiesta": "TEST_CG_001",
+                          "identificativoRisposta": "9c907dc0-d4ec-4ff9-8173-5699efa481c4",
+                          "stato": "COMPLETATO",
+                          "offset": 1
+                        },
+                        {
+                          "identificativoRichiesta": "TEST_CG_002",
+                          "stato": "ERRORE",
+                          "offset": 2
+                        },
+                        {
+                          "identificativoRichiesta": "TEST_CG_003",
+                          "identificativoRisposta": "7673e7e3-ba58-42bc-b692-76618be036e6",
+                          "stato": "COMPLETATO",
+                          "offset": 3
+                        }
+                      ],
+                      "lastOffset": 3
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/status": {
+      "get": {
+        "tags": [
+          "status"
+        ],
+        "operationId": "healthCheck-eservice",
+        "summary": "Health check del servizio",
+        "description": "Endpoint di health-check del servizio.",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/ServiceIsUp"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Agid-JWT-TrackingEvidence"
+          },
+          {
+            "$ref": "#/components/parameters/Agid-JWT-Signature"
+          },
+          {
+            "$ref": "#/components/parameters/Digest"
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Autenticazione tramite token Bearer JWT validato secondo le raccomandazioni di sicurezza RFC8725."
+      }
+    },
+    "headers": {
+      "Cache-Control": {
+        "description": "no-store",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "no-store"
+          ]
+        }
+      },
+      "X-RateLimit-Limit": {
+        "description": "Numero massimo di richieste consentite nella finestra corrente.",
+        "schema": {
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "X-RateLimit-Remaining": {
+        "description": "Numero di richieste residue nella finestra corrente.",
+        "schema": {
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "X-RateLimit-Reset": {
+        "description": "Secondi prima del reset della finestra di rate limit.",
+        "schema": {
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "Retry-After": {
+        "description": "Secondi da attendere prima di ricevere un'ulteriore risposta.",
+        "schema": {
+          "type": "integer",
+          "format": "int32",
+          "minimum": 0,
+          "maximum": 2147483647
+        }
+      }
+    },
+    "parameters": {
+      "Digest": {
+        "name": "Digest",
+        "in": "header",
+        "required": true,
+        "description": "Digest HTTP del payload.",
+        "schema": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 2048,
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]*=[:A-Za-z0-9+/=_-]+(?:(?:,\\s*)[A-Za-z][A-Za-z0-9_-]*=[:A-Za-z0-9+/=_-]+)*$"
+        }
+      },
+      "Agid-JWT-TrackingEvidence": {
+        "name": "Agid-JWT-TrackingEvidence",
+        "in": "header",
+        "required": true,
+        "description": "Token di audit ModI/PDND.",
+        "schema": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 8192,
+          "pattern": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"
+        }
+      },
+      "Agid-JWT-Signature": {
+        "name": "Agid-JWT-Signature",
+        "in": "header",
+        "required": true,
+        "description": "Firma JWS ModI/PDND del messaggio.",
+        "schema": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 8192,
+          "pattern": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"
+        }
+      }
+    },
+    "responses": {
+      "TooManyRequests": {
+        "description": "Too Many Requests - rate limit exceeded.",
+        "headers": {
+          "Cache-Control": {
+            "$ref": "#/components/headers/Cache-Control"
+          },
+          "Retry-After": {
+            "$ref": "#/components/headers/Retry-After"
+          },
+          "X-RateLimit-Limit": {
+            "$ref": "#/components/headers/X-RateLimit-Limit"
+          },
+          "X-RateLimit-Remaining": {
+            "$ref": "#/components/headers/X-RateLimit-Remaining"
+          },
+          "X-RateLimit-Reset": {
+            "$ref": "#/components/headers/X-RateLimit-Reset"
+          }
+        },
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/RateLimitProblemDetails"
+            },
+            "examples": {
+              "LimitExceeded": {
+                "summary": "Esempio body quando la quota è esaurita (gateway GovWay)",
+                "value": {
+                  "type": "https://govway.org/handling-errors/429/LimitExceeded.html",
+                  "title": "LimitExceeded",
+                  "status": 429,
+                  "detail": "Limit exceeded detected",
+                  "govway_id": "855913bb-c9e0-11f0-9479-005056ae091b"
+                }
+              },
+              "TooManyRequests": {
+                "summary": "Esempio body per troppe richieste simultanee (gateway GovWay)",
+                "value": {
+                  "type": "https://govway.org/handling-errors/429/TooManyRequests.html",
+                  "title": "TooManyRequests",
+                  "status": 429,
+                  "detail": "Too many requests detected",
+                  "govway_id": "3ffa259b-460e-11f0-82e2-005056ae5232"
+                }
+              }
+            }
+          }
+        }
+      },
+      "BadRequest": {
+        "description": "Invalid request",
+        "headers": {
+          "Cache-Control": {
+            "$ref": "#/components/headers/Cache-Control"
+          },
+          "X-RateLimit-Limit": {
+            "$ref": "#/components/headers/X-RateLimit-Limit"
+          },
+          "X-RateLimit-Remaining": {
+            "$ref": "#/components/headers/X-RateLimit-Remaining"
+          },
+          "X-RateLimit-Reset": {
+            "$ref": "#/components/headers/X-RateLimit-Reset"
+          }
+        },
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "examples": {
+              "Esempio risposta di errore.": {
+                "description": "Il codice di errore è a titolo di esempio",
+                "value": {
+                  "codice": "003",
+                  "descrizione": "Descrizione di esempio"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Unauthorized",
+        "headers": {
+          "Cache-Control": {
+            "$ref": "#/components/headers/Cache-Control"
+          },
+          "X-RateLimit-Limit": {
+            "$ref": "#/components/headers/X-RateLimit-Limit"
+          },
+          "X-RateLimit-Remaining": {
+            "$ref": "#/components/headers/X-RateLimit-Remaining"
+          },
+          "X-RateLimit-Reset": {
+            "$ref": "#/components/headers/X-RateLimit-Reset"
+          }
+        },
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "examples": {
+              "Esempio risposta di errore.": {
+                "description": "Il codice di errore è a titolo di esempio",
+                "value": {
+                  "codice": "003",
+                  "descrizione": "Descrizione di prova"
+                }
+              }
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Not found",
+        "headers": {
+          "Cache-Control": {
+            "$ref": "#/components/headers/Cache-Control"
+          },
+          "X-RateLimit-Limit": {
+            "$ref": "#/components/headers/X-RateLimit-Limit"
+          },
+          "X-RateLimit-Remaining": {
+            "$ref": "#/components/headers/X-RateLimit-Remaining"
+          },
+          "X-RateLimit-Reset": {
+            "$ref": "#/components/headers/X-RateLimit-Reset"
+          }
+        },
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "examples": {
+              "Esempio risposta di errore.": {
+                "description": "Il codice di errore è a titolo di esempio",
+                "value": {
+                  "codice": "003",
+                  "descrizione": "Descrizione di prova"
+                }
+              }
+            }
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "Internal server error",
+        "headers": {
+          "Cache-Control": {
+            "$ref": "#/components/headers/Cache-Control"
+          },
+          "X-RateLimit-Limit": {
+            "$ref": "#/components/headers/X-RateLimit-Limit"
+          },
+          "X-RateLimit-Remaining": {
+            "$ref": "#/components/headers/X-RateLimit-Remaining"
+          },
+          "X-RateLimit-Reset": {
+            "$ref": "#/components/headers/X-RateLimit-Reset"
+          }
+        },
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "examples": {
+              "Esempio risposta di errore.": {
+                "description": "Il codice di errore è a titolo di esempio",
+                "value": {
+                  "codice": "003",
+                  "descrizione": "Descrizione di prova"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ServiceUnavailable": {
+        "description": "Service unavailable",
+        "headers": {
+          "Cache-Control": {
+            "$ref": "#/components/headers/Cache-Control"
+          },
+          "X-RateLimit-Limit": {
+            "$ref": "#/components/headers/X-RateLimit-Limit"
+          },
+          "X-RateLimit-Remaining": {
+            "$ref": "#/components/headers/X-RateLimit-Remaining"
+          },
+          "X-RateLimit-Reset": {
+            "$ref": "#/components/headers/X-RateLimit-Reset"
+          },
+          "Retry-After": {
+            "$ref": "#/components/headers/Retry-After"
+          }
+        },
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            },
+            "examples": {
+              "ServiceDown": {
+                "value": {
+                  "type": "https://www.giustizia.it/problems/service-unavailable",
+                  "title": "ServiceUnavailable",
+                  "status": 503,
+                  "detail": "Service is temporarily unavailable",
+                  "codice": "503",
+                  "descrizione": "Servizio temporaneamente non disponibile"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ServiceIsUp": {
+        "description": "Service is up",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "status": {
+                  "type": "integer",
+                  "format": "int32",
+                  "minimum": 3,
+                  "maximum": 599
+                },
+                "title": {
+                  "type": "string",
+                  "maxLength": 64,
+                  "pattern": "^[\\s\\S]{1,64}$"
+                },
+                "detail": {
+                  "type": "string",
+                  "maxLength": 256,
+                  "pattern": "^[\\s\\S]{1,256}$"
+                }
+              },
+              "required": [
+                "status",
+                "title",
+                "detail"
+              ]
+            },
+            "examples": {
+              "OK": {
+                "value": {
+                  "status": 200,
+                  "title": "OK",
+                  "detail": "Service is running"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "AltriDati": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "numeroProtocollo",
+          "dataProtocollo"
+        ],
+        "properties": {
+          "infoDaStampare": {
+            "type": "string",
+            "maxLength": 100,
+            "pattern": "^[\\s\\S]{1,100}$"
+          },
+          "infoDaRestituire": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 100,
+            "pattern": "^[\\s\\S]{1,100}$"
+          },
+          "linguaTedesca": {
+            "type": "boolean"
+          },
+          "numeroProtocollo": {
+            "type": "string",
+            "maxLength": 15,
+            "pattern": "^[\\s\\S]{1,15}$"
+          },
+          "dataProtocollo": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
+      "DatiNominativoPersonaFisica": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "cognome",
+          "nome",
+          "sesso",
+          "codiceCatastoStato"
+        ],
+        "properties": {
+          "cognome": {
+            "type": "string",
+            "maxLength": 72,
+            "pattern": "^[\\s\\S]{1,72}$"
+          },
+          "nome": {
+            "type": "string",
+            "maxLength": 72,
+            "pattern": "^[\\s\\S]{1,72}$"
+          },
+          "sesso": {
+            "type": "string",
+            "enum": [
+              "M",
+              "F"
+            ]
+          },
+          "cf": {
+            "type": "string",
+            "maxLength": 16,
+            "pattern": "^[A-Z0-9]{16}$"
+          },
+          "cui": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 7,
+            "pattern": "^[A-Z0-9]{7}$",
+            "description": "Codice univoco identificativo legato alla persona fisica."
+          },
+          "dataNascita": {
+            "type": "string",
+            "format": "date"
+          },
+          "annoNascita": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "minimum": 1800,
+            "maximum": 2100
+          },
+          "codiceCatastoComuneItaliano": {
+            "type": "string",
+            "maxLength": 4,
+            "pattern": "^[A-Z0-9]{4}$"
+          },
+          "codiceCatastoStato": {
+            "type": "string",
+            "maxLength": 4,
+            "pattern": "^[A-Z0-9]{4}$"
+          }
+        }
+      },
+      "DatiRichiesta": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "identificativoRichiesta",
+          "dataRichiesta"
+        ],
+        "properties": {
+          "identificativoRichiesta": {
+            "type": "string",
+            "maxLength": 15,
+            "pattern": "^[A-Za-z0-9_.-]{1,15}$",
+            "description": "Identificativo assegnato arbitrariamente dall'ente fruitore."
+          },
+          "dataRichiesta": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "NominativoRichiestoDatiNominativoPersonaFisica": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "progressivoNominativo",
+          "datiNominativo",
+          "altriDati"
+        ],
+        "properties": {
+          "progressivoNominativo": {
+            "type": "string",
+            "maxLength": 15,
+            "pattern": "^[\\s\\S]{1,15}$"
+          },
+          "datiNominativo": {
+            "$ref": "#/components/schemas/DatiNominativoPersonaFisica"
+          },
+          "altriDati": {
+            "$ref": "#/components/schemas/AltriDati"
+          }
+        }
+      },
+      "RichiestaServizioDatiNominativoPersonaFisica": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "datiRichiesta",
+          "nominativiRichiesti"
+        ],
+        "properties": {
+          "datiRichiesta": {
+            "$ref": "#/components/schemas/DatiRichiesta"
+          },
+          "nominativiRichiesti": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "items": {
+              "$ref": "#/components/schemas/NominativoRichiestoDatiNominativoPersonaFisica"
+            }
+          }
+        }
+      },
+      "AckDiAccettazione": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "identificativoRichiesta"
+        ],
+        "properties": {
+          "identificativoRichiesta": {
+            "type": "string",
+            "maxLength": 15,
+            "pattern": "^[A-Za-z0-9_.-]{1,15}$",
+            "description": "Identificativo assegnato arbitrariamente dall'ente fruitore."
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "codice",
+          "descrizione"
+        ],
+        "properties": {
+          "codice": {
+            "type": "string",
+            "maxLength": 6,
+            "pattern": "^[\\s\\S]{1,6}$"
+          },
+          "descrizione": {
+            "type": "string",
+            "maxLength": 255,
+            "pattern": "^[\\s\\S]{1,255}$"
+          }
+        }
+      },
+      "RateLimitProblemDetails": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "title",
+          "status",
+          "detail"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 2048
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 100,
+            "maximum": 599
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 1024,
+            "pattern": "^[\\s\\S]{0,1024}$"
+          },
+          "instance": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 2048
+          },
+          "govway_id": {
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[A-Za-z0-9-]{1,64}$"
+          }
+        }
+      },
+      "DatiRispostaDatiNominativoPersonaFisica": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "esito",
+          "listaSinonimi",
+          "listaOmonimi"
+        ],
+        "properties": {
+          "esito": {
+            "$ref": "#/components/schemas/Esito"
+          },
+          "certificato": {
+            "type": "string",
+            "description": "Contenuto del certificato in formato PDF codificato in base64",
+            "format": "byte",
+            "maxLength": 10485760,
+            "pattern": "^[\\s\\S]{1,10485760}$"
+          },
+          "nominativoTrovato": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NominativoTrovatoDatiNominativoPersonaFisica"
+              }
+            ],
+            "nullable": true
+          },
+          "listaSinonimi": {
+            "type": "array",
+            "minItems": 0,
+            "maxItems": 100,
+            "items": {
+              "$ref": "#/components/schemas/DatiNominativoPersonaFisica"
+            }
+          },
+          "listaOmonimi": {
+            "type": "array",
+            "minItems": 0,
+            "maxItems": 100,
+            "items": {
+              "$ref": "#/components/schemas/DatiNominativoPersonaFisica"
+            }
+          },
+          "dataEmissioneCertificato": {
+            "type": "string",
+            "description": "Data di emissione del certificato",
+            "format": "date-time"
+          },
+          "casellarioEuropeo": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CasellarioEuropeo"
+              }
+            ],
+            "nullable": true
+          }
+        }
+      },
+      "CasellarioEuropeo": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "presenzaProvvedimenti"
+        ],
+        "properties": {
+          "presenzaProvvedimenti": {
+            "type": "boolean",
+            "description": "Indica la presenza di provvedimenti nel casellario europeo"
+          }
+        },
+        "description": "Informazioni relative al casellario europeo"
+      },
+      "Esito": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "codice",
+          "descrizione"
+        ],
+        "properties": {
+          "codice": {
+            "type": "string",
+            "maxLength": 6,
+            "pattern": "^[\\s\\S]{1,6}$"
+          },
+          "descrizione": {
+            "type": "string",
+            "maxLength": 255,
+            "pattern": "^[\\s\\S]{1,255}$"
+          }
+        }
+      },
+      "EsitoServizio": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "codice",
+          "descrizione"
+        ],
+        "properties": {
+          "codice": {
+            "type": "string",
+            "maxLength": 6,
+            "pattern": "^[\\s\\S]{1,6}$"
+          },
+          "descrizione": {
+            "type": "string",
+            "maxLength": 255,
+            "pattern": "^[\\s\\S]{1,255}$"
+          }
+        }
+      },
+      "NominativoTrovatoDatiNominativoPersonaFisica": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "datiNominativo"
+        ],
+        "properties": {
+          "datiNominativo": {
+            "$ref": "#/components/schemas/DatiNominativoPersonaFisica"
+          }
+        }
+      },
+      "RispostaDatiNominativoPersonaFisica": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "nominativoRichiesto",
+          "datiRisposta"
+        ],
+        "properties": {
+          "nominativoRichiesto": {
+            "$ref": "#/components/schemas/NominativoRichiestoDatiNominativoPersonaFisica"
+          },
+          "datiRisposta": {
+            "$ref": "#/components/schemas/DatiRispostaDatiNominativoPersonaFisica"
+          }
+        }
+      },
+      "RispostaServizioDatiNominativoPersonaFisica": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "esitoServizio",
+          "datiRichiesta",
+          "risposta"
+        ],
+        "properties": {
+          "esitoServizio": {
+            "$ref": "#/components/schemas/EsitoServizio"
+          },
+          "datiRichiesta": {
+            "$ref": "#/components/schemas/DatiRichiesta"
+          },
+          "risposta": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "items": {
+              "$ref": "#/components/schemas/RispostaDatiNominativoPersonaFisica"
+            }
+          }
+        }
+      },
+      "EsitoPolling": {
+        "required": [
+          "identificativoRichiesta",
+          "offset",
+          "stato"
+        ],
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "identificativoRichiesta": {
+            "type": "string",
+            "maxLength": 15,
+            "pattern": "^[A-Za-z0-9_.-]{1,15}$",
+            "description": "Identificativo assegnato arbitrariamente dall'ente fruitore."
+          },
+          "identificativoRisposta": {
+            "type": "string",
+            "description": "uuid-v4 univoco della risposta (presente solo se stato=COMPLETATO)",
+            "maxLength": 36
+          },
+          "stato": {
+            "type": "string",
+            "description": "Stato della richiesta (COMPLETATO/ERRORE)",
+            "enum": [
+              "COMPLETATO",
+              "ERRORE"
+            ]
+          },
+          "offset": {
+            "type": "integer",
+            "description": "Offset progressivo dell'esito",
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 9223372036854776000
+          }
+        },
+        "description": "Esito di una singola richiesta"
+      },
+      "RispostaPolling": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "esiti"
+        ],
+        "properties": {
+          "esiti": {
+            "type": "array",
+            "minItems": 0,
+            "maxItems": 100,
+            "description": "Lista degli esiti delle richieste elaborate",
+            "items": {
+              "$ref": "#/components/schemas/EsitoPolling"
+            }
+          },
+          "lastOffset": {
+            "type": "integer",
+            "description": "Ultimo offset processato",
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 9223372036854776000
+          }
+        },
+        "description": "Risposta del servizio di polling"
+      },
+      "Problem": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "status",
+          "title",
+          "detail"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 2048
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[\\s\\S]{1,64}$"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 100,
+            "maximum": 599
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 1024,
+            "pattern": "^[\\s\\S]{1,1024}$"
+          },
+          "instance": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 2048
+          },
+          "codice": {
+            "type": "string",
+            "maxLength": 6,
+            "pattern": "^[\\s\\S]{1,6}$"
+          },
+          "descrizione": {
+            "type": "string",
+            "maxLength": 255,
+            "pattern": "^[\\s\\S]{1,255}$"
+          }
+        }
+      }
+    }
+  },
+  "x-rate-limit": {
+    "enabled": true
+  }
+}
