@@ -1,0 +1,11 @@
+security:
+  kid : ""
+  alg : "RS256"
+  typ : "JWT"
+
+eservice:
+  issuer : ""
+  subject : ""
+  audience : "casellario-persone-fisiche"
+  purposeId : ""
+
