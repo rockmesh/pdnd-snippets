@@ -340,11 +340,11 @@ class CasellarioClient:
 # ==========================================================================
 
 if __name__ == "__main__":
-    with open("config.yaml", "r", encoding="utf-8") as f:
+    CONFIG_FILE = "config_casellario.yaml"
+    with open(CONFIG_FILE, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
     parser = argparse.ArgumentParser(description='Inputs')
-
     parser.add_argument('--f', required=True)
     parser.add_argument('--key', required=True)
     args = parser.parse_args()
@@ -352,17 +352,25 @@ if __name__ == "__main__":
     with open(args.key, "r", encoding="utf-8") as f:
         private_key = f.read()
 
+    #carica i nominiativi da cercare
+    nominativi = load_nominativi_from_file(args.f)
+
+    #PDND setup
+    print("==> Get Client Assertion")
+    cl_ass = pdnd.get_client_assertion(CONFIG_FILE,args.key)
+
+    print("==> Get Token: ", end="")
+    token = pdnd.get_JWT_token(cl_ass)
+    print(token.status_code)
 
     client = CasellarioClient(
-        access_token="IL_TUO_VOUCHER_OTTENUTO_DALLA_PDND",
+        access_token=token.json(),
         config=config,
         private_key=private_key,
-        user_id="operatore.rossi",
-        user_location="postazione-01",
+        user_id="generic.DTD.operator",
+        user_location="alessandria.007",
         loa="2",
     )
-
-    nominativi = load_nominativi_from_file(args.f)
 
     risultato = client.richiedi_certificati(
         identificativo_richiesta="REQ_2026_0001",   # max 15 caratteri, univoco

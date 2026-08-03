@@ -8,8 +8,29 @@ from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Dict, Any
 
 # ==========================================================================
-# Sicurezza ModI: Digest, Agid-JWT-Signature, Agid-JWT-TrackingEvidence
+# Helper functions 
 # ==========================================================================
+def yaml_load_config(path: str) -> dict:
+    with open(path, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+def get_yaml_value(config: dict, *keys, default=None):
+    """Naviga dizionari annidati in sicurezza, es: get(config, 'security', 'kid')"""
+    d = config
+    for k in keys:
+        if not isinstance(d, dict) or k not in d:
+            return default
+        d = d[k]
+    return d
+
+def get_private_key(key_path):
+  with open(key_path, "rb") as private_key:
+    encoded_string = private_key.read()
+    return encoded_string
+
+
+
+
 
 def calcola_digest(body: bytes) -> str:
     """Header HTTP 'Digest' (RFC 3230) sul body della richiesta (o su b'' per le GET)."""
@@ -17,6 +38,68 @@ def calcola_digest(body: bytes) -> str:
     digest_b64 = base64.b64encode(digest_bytes).decode("ascii")
     return f"SHA-256={digest_b64}"
 
+# ==========================================================================
+# PDND: funzionalità base
+# ==========================================================================
+def get_client_assertion(config_path : str, key_path : str):
+    """ Richiede la client assertion sulla base dello yaml di configurazione (config_path). Vedi UI di PDND"""
+    config = yaml_load_config(config_path)
+    kid = get_yaml_value(config, "security", "kid")
+    alg = get_yaml_value(config, "security", "alg")
+    typ = get_yaml_value(config, "security", "typ")
+    issuer = get_yaml_value(config, "eservice", "issuer")
+    subject = get_yaml_value(config, "eservice", "subject")
+    audience = "auth.interop.pagopa.it/client-assertion"
+    purposeId = get_yaml_value(config, "eservice", "purposeId")
+
+    issued = datetime.datetime.utcnow()
+    delta = datetime.timedelta(minutes=43200)
+    expire_in = issued + delta
+    jti = uuid.uuid4()
+
+    headers_rsa = {
+        "kid": kid,
+        "alg": alg,
+        "typ": typ
+        }
+
+    payload = {
+        "iss": issuer,
+        "sub": subject,
+        "aud": audience,
+        "purposeId": purposeId,
+        "jti": str(jti),
+        "iat": issued,
+        "exp": expire_in
+        }
+
+    rsaKey = get_private_key(key_path)
+    client_assertion = jwt.encode(payload, rsaKey, algorithm=Algorithms.RS256, headers=headers_rsa)
+    return client_assertion
+
+
+def get_JWT_token(client_assertion):
+    """ Richiede il jwt token a PDND passando la client assertion """
+    url = "https://auth.interop.pagopa.it/token.oauth2"
+
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded"
+    }
+
+    data = {
+        "client_id": "59e9b50f-282a-48ee-9494-5c4baf952efd",
+        "client_assertion": client_assertion,
+        "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+        "grant_type": "client_credentials"
+    }
+
+    response = requests.post(url, headers=headers, data=data)
+    return response
+
+
+# ==========================================================================
+# Sicurezza ModI: Digest, Agid-JWT-Signature, Agid-JWT-TrackingEvidence
+# ==========================================================================
 
 def crea_agid_jwt_signature(
     audience: str,
