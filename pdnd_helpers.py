@@ -82,7 +82,7 @@ def get_client_assertion(config_path : str, key_path : str):
     return client_assertion
 
 
-def get_JWT_token(client_assertion):
+def get_JWT_token(config, client_assertion):
     """ Richiede il jwt token a PDND passando la client assertion """
     url = "https://auth.interop.pagopa.it/token.oauth2"
 
@@ -91,7 +91,7 @@ def get_JWT_token(client_assertion):
     }
 
     data = {
-        "client_id": "59e9b50f-282a-48ee-9494-5c4baf952efd",
+        "client_id": config["eservice"]["issuer"],
         "client_assertion": client_assertion,
         "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
         "grant_type": "client_credentials"

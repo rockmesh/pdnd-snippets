@@ -361,7 +361,7 @@ if __name__ == "__main__":
     cl_ass = pdnd.get_client_assertion(CONFIG_FILE,args.key)
 
     print("==> Get Token: ", end="")
-    token = pdnd.get_JWT_token(cl_ass)
+    token = pdnd.get_JWT_token(config, cl_ass)
     print(token.status_code)
 
     if(token.status_code != 200):
