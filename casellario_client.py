@@ -43,9 +43,11 @@ from typing import List, Optional, Dict, Any
 import cf_helpers as cfh
 import pdnd_helpers as pdnd
 
+import pandas as pd
 import requests
 import yaml
 
+import argparse
 
 BASE_URL = (
     "https://interoperabilita.giustizia.it/channel01/govway/rest/in/"
@@ -71,6 +73,24 @@ class Nominativo:
     info_da_stampare: Optional[str] = None
     lingua_tedesca: bool = False
     secolo_hint: Optional[int] = None          # 1900 o 2000, per casi limite
+
+def load_nominativi_from_file(filename : str) -> List[Nominativo]:
+    df = pd.read_csv(filename, sep=";", dtype=str)  # dtype=str evita che pandas interpreti CF/protocolli come numeri
+    df = df.fillna("")  # evita valori NaN nei campi opzionali
+
+    print(df.head(2))
+
+    nominativi = [
+        Nominativo(
+            cf=row["cf"].strip().upper(),
+            cognome=row["cognome"].strip(),
+            nome=row["nome"].strip(),
+            numero_protocollo=str(row["numero_protocollo"]).strip(),
+        )
+        for _, row in df.iterrows()
+    ]
+    return nominativi
+
 
 # ==========================================================================
 # Costruzione del payload di richiesta
@@ -173,7 +193,7 @@ class CasellarioClient:
         headers = self._headers_comuni(URL_RICHIESTA, body_bytes, "application/json")
 
         try:
-            resp = self.session.post(URL_RICHIESTA, data=body_bytes, headers=headers, verify=True, timeout=30)
+            resp = self.session.post(URL_RICHIESTA, data=body_bytes, headers=headers, verify=True, timeout=10)
             if resp.status_code != 202:
                 raise RuntimeError(f"Richiesta non accettata (HTTP {resp.status_code}): {resp.text}")
         except requests.exceptions.ConnectTimeout as e:
@@ -181,6 +201,7 @@ class CasellarioClient:
             print(f"Errore nella request: {e}")
         except requests.exceptions.RequestException as e:
             print(f"Errore nella request: {e}")
+            raise e
 
         ack = resp.json()
         return ack["identificativoRichiesta"]
@@ -321,8 +342,16 @@ class CasellarioClient:
 if __name__ == "__main__":
     with open("config.yaml", "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
-    with open("../client_DTD_001.rsa.pem", "r", encoding="utf-8") as f:
+
+    parser = argparse.ArgumentParser(description='Inputs')
+
+    parser.add_argument('--f', required=True)
+    parser.add_argument('--key', required=True)
+    args = parser.parse_args()
+
+    with open(args.key, "r", encoding="utf-8") as f:
         private_key = f.read()
+
 
     client = CasellarioClient(
         access_token="IL_TUO_VOUCHER_OTTENUTO_DALLA_PDND",
@@ -333,15 +362,17 @@ if __name__ == "__main__":
         loa="2",
     )
 
-    nominativi = [
-        Nominativo(
-            cf="RSSMRA80A01H501U",
-            cognome="ROSSI",
-            nome="MARIO",
-            numero_protocollo="1",
-        ),
-        # aggiungi qui altri nominativi (cf, cognome, nome, numero_protocollo)...
-    ]
+    nominativi = load_nominativi_from_file(args.f)
+
+#    nominativi = [
+#        Nominativo(
+#            cf="RSSMRA80A01H501U",
+#            cognome="ROSSI",
+#            nome="MARIO",
+#            numero_protocollo="1",
+#        ),
+#        # aggiungi qui altri nominativi (cf, cognome, nome, numero_protocollo)...
+#    ]
 
     risultato = client.richiedi_certificati(
         identificativo_richiesta="REQ_2026_0001",   # max 15 caratteri, univoco
