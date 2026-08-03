@@ -353,16 +353,22 @@ if __name__ == "__main__":
         private_key = f.read()
 
     #carica i nominiativi da cercare
+    print(f"==> Carichiamo i nominativi da {args.f}. Ecco i primi 2:")
     nominativi = load_nominativi_from_file(args.f)
 
     #PDND setup
-    print("==> Get Client Assertion")
+    print("\n==> Get Client Assertion")
     cl_ass = pdnd.get_client_assertion(CONFIG_FILE,args.key)
 
     print("==> Get Token: ", end="")
     token = pdnd.get_JWT_token(cl_ass)
     print(token.status_code)
 
+    if(token.status_code != 200):
+        print("Error retrieving PDND token")
+        exit(-1)
+
+    print("Richiesta Servizio Casellario", flush = True)
     client = CasellarioClient(
         access_token=token.json(),
         config=config,

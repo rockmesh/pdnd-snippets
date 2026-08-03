@@ -2,9 +2,13 @@
 import hashlib
 import base64
 import uuid
+import datetime
+import requests
+import yaml
+
 from jose import jwt
 from jose.constants import Algorithms
-from datetime import datetime, timezone, timedelta
+#from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Dict, Any
 
 # ==========================================================================
@@ -111,7 +115,7 @@ def crea_agid_jwt_signature(
     validity_seconds: int = 60,
 ) -> str:
     """JWS per l'header 'Agid-JWT-Signature' (pattern INTEGRITY_REST_02)."""
-    now = datetime.now(timezone.utc)
+    now = datetime.datetime.now(datetime.timezone.utc)
     signed_headers = [{"digest": digest_header}]
     if content_type:
         signed_headers.append({"content-type": content_type})
@@ -119,7 +123,7 @@ def crea_agid_jwt_signature(
         "aud": audience,
         "iat": int(now.timestamp()),
         "nbf": int(now.timestamp()),
-        "exp": int((now + timedelta(seconds=validity_seconds)).timestamp()),
+        "exp": int((now + datetime.timedelta(seconds=validity_seconds)).timestamp()),
         "signed_headers": signed_headers,
     }
     jose_headers = {"alg": alg, "typ": "JWT", "kid": kid}
@@ -140,13 +144,13 @@ def crea_agid_jwt_tracking_evidence(
     validity_seconds: int = 60,
 ) -> str:
     """JWS per l'header 'Agid-JWT-TrackingEvidence' (pattern AUDIT_REST_01)."""
-    now = datetime.now(timezone.utc)
+    now = datetime.datetime.now(datetime.timezone.utc)
     payload = {
         "iss": issuer,
         "sub": subject,
         "aud": audience,
         "iat": int(now.timestamp()),
-        "exp": int((now + timedelta(seconds=validity_seconds)).timestamp()),
+        "exp": int((now + datetime.timedelta(seconds=validity_seconds)).timestamp()),
         "jti": str(uuid.uuid4()),
         "purposeId": purpose_id,
         "userID": user_id,
