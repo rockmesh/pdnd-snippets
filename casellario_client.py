@@ -364,16 +364,6 @@ if __name__ == "__main__":
 
     nominativi = load_nominativi_from_file(args.f)
 
-#    nominativi = [
-#        Nominativo(
-#            cf="RSSMRA80A01H501U",
-#            cognome="ROSSI",
-#            nome="MARIO",
-#            numero_protocollo="1",
-#        ),
-#        # aggiungi qui altri nominativi (cf, cognome, nome, numero_protocollo)...
-#    ]
-
     risultato = client.richiedi_certificati(
         identificativo_richiesta="REQ_2026_0001",   # max 15 caratteri, univoco
         nominativi=nominativi,
@@ -382,3 +372,4 @@ if __name__ == "__main__":
     )
 
     print(json.dumps(risultato, indent=2, ensure_ascii=False))
+
