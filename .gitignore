@@ -4,8 +4,8 @@
 *.p12
 *.pfx
 private_key*
-config.yaml
-config.yml
+config*.yaml
+config*.yml
 .env
 *.secret
 
