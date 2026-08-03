@@ -8,6 +8,7 @@ config*.yaml
 config*.yml
 .env
 *.secret
+*.rsa.*
 
 #swap file by gVim
 *.swp
