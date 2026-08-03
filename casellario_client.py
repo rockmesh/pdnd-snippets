@@ -34,16 +34,19 @@ un caso limite (nati proprio a cavallo del cambio secolo), passa
 'secolo_hint' esplicitamente.
 """
 
-import base64
-import hashlib
+#import base64
+#import hashlib
 import json
 import time
-import uuid
+#import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Dict, Any
 
-import jwt  # PyJWT
+import cf_helpers as cfh
+import pdnd_helpers as pdnd
+
+#import jwt  # PyJWT
 import requests
 import yaml
 
@@ -75,173 +78,173 @@ class Nominativo:
     secolo_hint: Optional[int] = None          # 1900 o 2000, per casi limite
 
 
-# ==========================================================================
-# Decodifica parziale del codice fiscale
-# ==========================================================================
-
-_MESI_CF = "ABCDEHLMPRST"  # gennaio..dicembre, ordine fisso dell'algoritmo CF
-
-
-def decodifica_cf(cf: str, secolo_hint: Optional[int] = None) -> Dict[str, Any]:
-    """
-    Estrae sesso, data di nascita e codice catastale del comune/stato di
-    nascita dal codice fiscale (algoritmo standard italiano).
-    NON restituisce cognome/nome: non sono ricavabili in modo affidabile.
-    """
-    cf = cf.strip().upper()
-    if len(cf) != 16:
-        raise ValueError(f"Codice fiscale di lunghezza non valida: {cf}")
-
-    anno = int(cf[6:8])
-    mese_lettera = cf[8]
-    giorno_raw = int(cf[9:11])
-
-    if mese_lettera not in _MESI_CF:
-        raise ValueError(f"Codice fiscale non valido (carattere mese '{mese_lettera}'): {cf}")
-    mese = _MESI_CF.index(mese_lettera) + 1
-
-    sesso = "F" if giorno_raw > 40 else "M"
-    giorno = giorno_raw - 40 if giorno_raw > 40 else giorno_raw
-
-    if secolo_hint:
-        secolo = secolo_hint
-    else:
-        anno_corrente_2cifre = datetime.now().year % 100
-        secolo = 2000 if anno <= anno_corrente_2cifre else 1900
-    anno_completo = secolo + anno
-
-    data_nascita = f"{anno_completo:04d}-{mese:02d}-{giorno:02d}"
-
-    codice_catasto = cf[11:15]
-    if codice_catasto.startswith("Z"):
-        # nato all'estero: cf[11:15] è già il codice catastale dello Stato estero
-        codice_catasto_comune = None
-        codice_catasto_stato = codice_catasto
-    else:
-        # nato in Italia: cf[11:15] è il codice catastale del comune;
-        # codiceCatastoStato è valorizzato a 'Z000' (confermato dall'esempio
-        # ufficiale dello spec per un nominativo nato in Italia)
-        codice_catasto_comune = codice_catasto
-        codice_catasto_stato = "Z000"
-
-    return {
-        "sesso": sesso,
-        "dataNascita": data_nascita,
-        "codiceCatastoComuneItaliano": codice_catasto_comune,
-        "codiceCatastoStato": codice_catasto_stato,
-    }
-
-
-# ==========================================================================
-# Sicurezza ModI: Digest, Agid-JWT-Signature, Agid-JWT-TrackingEvidence
-# ==========================================================================
-
-def calcola_digest(body: bytes) -> str:
-    """Header HTTP 'Digest' (RFC 3230) sul body della richiesta (o su b'' per le GET)."""
-    digest_bytes = hashlib.sha256(body).digest()
-    digest_b64 = base64.b64encode(digest_bytes).decode("ascii")
-    return f"SHA-256={digest_b64}"
+## ==========================================================================
+## Decodifica parziale del codice fiscale
+## ==========================================================================
+#
+#_MESI_CF = "ABCDEHLMPRST"  # gennaio..dicembre, ordine fisso dell'algoritmo CF
+#
+#
+#def decodifica_cf(cf: str, secolo_hint: Optional[int] = None) -> Dict[str, Any]:
+#    """
+#    Estrae sesso, data di nascita e codice catastale del comune/stato di
+#    nascita dal codice fiscale (algoritmo standard italiano).
+#    NON restituisce cognome/nome: non sono ricavabili in modo affidabile.
+#    """
+#    cf = cf.strip().upper()
+#    if len(cf) != 16:
+#        raise ValueError(f"Codice fiscale di lunghezza non valida: {cf}")
+#
+#    anno = int(cf[6:8])
+#    mese_lettera = cf[8]
+#    giorno_raw = int(cf[9:11])
+#
+#    if mese_lettera not in _MESI_CF:
+#        raise ValueError(f"Codice fiscale non valido (carattere mese '{mese_lettera}'): {cf}")
+#    mese = _MESI_CF.index(mese_lettera) + 1
+#
+#    sesso = "F" if giorno_raw > 40 else "M"
+#    giorno = giorno_raw - 40 if giorno_raw > 40 else giorno_raw
+#
+#    if secolo_hint:
+#        secolo = secolo_hint
+#    else:
+#        anno_corrente_2cifre = datetime.now().year % 100
+#        secolo = 2000 if anno <= anno_corrente_2cifre else 1900
+#    anno_completo = secolo + anno
+#
+#    data_nascita = f"{anno_completo:04d}-{mese:02d}-{giorno:02d}"
+#
+#    codice_catasto = cf[11:15]
+#    if codice_catasto.startswith("Z"):
+#        # nato all'estero: cf[11:15] è già il codice catastale dello Stato estero
+#        codice_catasto_comune = None
+#        codice_catasto_stato = codice_catasto
+#    else:
+#        # nato in Italia: cf[11:15] è il codice catastale del comune;
+#        # codiceCatastoStato è valorizzato a 'Z000' (confermato dall'esempio
+#        # ufficiale dello spec per un nominativo nato in Italia)
+#        codice_catasto_comune = codice_catasto
+#        codice_catasto_stato = "Z000"
+#
+#    return {
+#        "sesso": sesso,
+#        "dataNascita": data_nascita,
+#        "codiceCatastoComuneItaliano": codice_catasto_comune,
+#        "codiceCatastoStato": codice_catasto_stato,
+#    }
 
 
-def crea_agid_jwt_signature(
-    audience: str,
-    digest_header: str,
-    content_type: Optional[str],
-    kid: str,
-    alg: str,
-    private_key: str,
-    validity_seconds: int = 60,
-) -> str:
-    """JWS per l'header 'Agid-JWT-Signature' (pattern INTEGRITY_REST_02)."""
-    now = datetime.now(timezone.utc)
-    signed_headers = [{"digest": digest_header}]
-    if content_type:
-        signed_headers.append({"content-type": content_type})
-    payload = {
-        "aud": audience,
-        "iat": int(now.timestamp()),
-        "nbf": int(now.timestamp()),
-        "exp": int((now + timedelta(seconds=validity_seconds)).timestamp()),
-        "signed_headers": signed_headers,
-    }
-    jose_headers = {"alg": alg, "typ": "JWT", "kid": kid}
-    return jwt.encode(payload, private_key, algorithm=alg, headers=jose_headers)
-
-
-def crea_agid_jwt_tracking_evidence(
-    issuer: str,
-    subject: str,
-    audience: str,
-    purpose_id: str,
-    user_id: str,
-    user_location: str,
-    loa: str,
-    kid: str,
-    alg: str,
-    private_key: str,
-    validity_seconds: int = 60,
-) -> str:
-    """JWS per l'header 'Agid-JWT-TrackingEvidence' (pattern AUDIT_REST_01)."""
-    now = datetime.now(timezone.utc)
-    payload = {
-        "iss": issuer,
-        "sub": subject,
-        "aud": audience,
-        "iat": int(now.timestamp()),
-        "exp": int((now + timedelta(seconds=validity_seconds)).timestamp()),
-        "jti": str(uuid.uuid4()),
-        "purposeId": purpose_id,
-        "userID": user_id,
-        "userLocation": user_location,
-        "LoA": loa,
-    }
-    jose_headers = {"alg": alg, "typ": "JWT", "kid": kid}
-    return jwt.encode(payload, private_key, algorithm=alg, headers=jose_headers)
-
-
-def _crea_header_sicurezza(
-    url: str,
-    body_bytes: bytes,
-    content_type: Optional[str],
-    config: dict,
-    private_key: str,
-    user_id: str,
-    user_location: str,
-    loa: str,
-) -> Dict[str, str]:
-    """Costruisce Digest + Agid-JWT-Signature + Agid-JWT-TrackingEvidence per una chiamata."""
-    security_cfg = config["security"]
-    eservice_cfg = config["eservice"]
-
-    digest_header = calcola_digest(body_bytes)
-
-    agid_jwt_signature = crea_agid_jwt_signature(
-        audience=url,
-        digest_header=digest_header,
-        content_type=content_type,
-        kid=security_cfg["kid"],
-        alg=security_cfg["alg"],
-        private_key=private_key,
-    )
-
-    agid_jwt_tracking_evidence = crea_agid_jwt_tracking_evidence(
-        issuer=eservice_cfg["issuer"],
-        subject=eservice_cfg["subject"],
-        audience=url,
-        purpose_id=eservice_cfg["purposeId"],
-        user_id=user_id,
-        user_location=user_location,
-        loa=loa,
-        kid=security_cfg["kid"],
-        alg=security_cfg["alg"],
-        private_key=private_key,
-    )
-
-    return {
-        "Digest": digest_header,
-        "Agid-JWT-Signature": agid_jwt_signature,
-        "Agid-JWT-TrackingEvidence": agid_jwt_tracking_evidence,
-    }
+## ==========================================================================
+## Sicurezza ModI: Digest, Agid-JWT-Signature, Agid-JWT-TrackingEvidence
+## ==========================================================================
+#
+#def calcola_digest(body: bytes) -> str:
+#    """Header HTTP 'Digest' (RFC 3230) sul body della richiesta (o su b'' per le GET)."""
+#    digest_bytes = hashlib.sha256(body).digest()
+#    digest_b64 = base64.b64encode(digest_bytes).decode("ascii")
+#    return f"SHA-256={digest_b64}"
+#
+#
+#def crea_agid_jwt_signature(
+#    audience: str,
+#    digest_header: str,
+#    content_type: Optional[str],
+#    kid: str,
+#    alg: str,
+#    private_key: str,
+#    validity_seconds: int = 60,
+#) -> str:
+#    """JWS per l'header 'Agid-JWT-Signature' (pattern INTEGRITY_REST_02)."""
+#    now = datetime.now(timezone.utc)
+#    signed_headers = [{"digest": digest_header}]
+#    if content_type:
+#        signed_headers.append({"content-type": content_type})
+#    payload = {
+#        "aud": audience,
+#        "iat": int(now.timestamp()),
+#        "nbf": int(now.timestamp()),
+#        "exp": int((now + timedelta(seconds=validity_seconds)).timestamp()),
+#        "signed_headers": signed_headers,
+#    }
+#    jose_headers = {"alg": alg, "typ": "JWT", "kid": kid}
+#    return jwt.encode(payload, private_key, algorithm=alg, headers=jose_headers)
+#
+#
+#def crea_agid_jwt_tracking_evidence(
+#    issuer: str,
+#    subject: str,
+#    audience: str,
+#    purpose_id: str,
+#    user_id: str,
+#    user_location: str,
+#    loa: str,
+#    kid: str,
+#    alg: str,
+#    private_key: str,
+#    validity_seconds: int = 60,
+#) -> str:
+#    """JWS per l'header 'Agid-JWT-TrackingEvidence' (pattern AUDIT_REST_01)."""
+#    now = datetime.now(timezone.utc)
+#    payload = {
+#        "iss": issuer,
+#        "sub": subject,
+#        "aud": audience,
+#        "iat": int(now.timestamp()),
+#        "exp": int((now + timedelta(seconds=validity_seconds)).timestamp()),
+#        "jti": str(uuid.uuid4()),
+#        "purposeId": purpose_id,
+#        "userID": user_id,
+#        "userLocation": user_location,
+#        "LoA": loa,
+#    }
+#    jose_headers = {"alg": alg, "typ": "JWT", "kid": kid}
+#    return jwt.encode(payload, private_key, algorithm=alg, headers=jose_headers)
+#
+#
+#def _crea_header_sicurezza(
+#    url: str,
+#    body_bytes: bytes,
+#    content_type: Optional[str],
+#    config: dict,
+#    private_key: str,
+#    user_id: str,
+#    user_location: str,
+#    loa: str,
+#) -> Dict[str, str]:
+#    """Costruisce Digest + Agid-JWT-Signature + Agid-JWT-TrackingEvidence per una chiamata."""
+#    security_cfg = config["security"]
+#    eservice_cfg = config["eservice"]
+#
+#    digest_header = calcola_digest(body_bytes)
+#
+#    agid_jwt_signature = pdnd.crea_agid_jwt_signature(
+#        audience=url,
+#        digest_header=digest_header,
+#        content_type=content_type,
+#        kid=security_cfg["kid"],
+#        alg=security_cfg["alg"],
+#        private_key=private_key,
+#    )
+#
+#    agid_jwt_tracking_evidence = pdnd.crea_agid_jwt_tracking_evidence(
+#        issuer=eservice_cfg["issuer"],
+#        subject=eservice_cfg["subject"],
+#        audience=url,
+#        purpose_id=eservice_cfg["purposeId"],
+#        user_id=user_id,
+#        user_location=user_location,
+#        loa=loa,
+#        kid=security_cfg["kid"],
+#        alg=security_cfg["alg"],
+#        private_key=private_key,
+#    )
+#
+#    return {
+#        "Digest": digest_header,
+#        "Agid-JWT-Signature": agid_jwt_signature,
+#        "Agid-JWT-TrackingEvidence": agid_jwt_tracking_evidence,
+#    }
 
 
 # ==========================================================================
@@ -252,7 +255,7 @@ def _costruisci_payload_richiesta(identificativo_richiesta: str, nominativi: Lis
     oggi = datetime.now().strftime("%Y-%m-%d")
     nominativi_richiesti = []
     for i, n in enumerate(nominativi, start=1):
-        dati_cf = decodifica_cf(n.cf, secolo_hint=n.secolo_hint)
+        dati_cf = cfh.decodifica_cf(n.cf, secolo_hint=n.secolo_hint)
         nominativi_richiesti.append({
             "progressivoNominativo": str(i),
             "datiNominativo": {
@@ -320,7 +323,7 @@ class CasellarioClient:
         }
         if content_type:
             headers["Content-Type"] = content_type
-        headers.update(_crea_header_sicurezza(
+        headers.update(pdnd._crea_header_sicurezza(
             url=url,
             body_bytes=body_bytes,
             content_type=content_type,
@@ -343,10 +346,16 @@ class CasellarioClient:
         body_bytes = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
 
         headers = self._headers_comuni(URL_RICHIESTA, body_bytes, "application/json")
-        resp = self.session.post(URL_RICHIESTA, data=body_bytes, headers=headers, verify=True, timeout=30)
 
-        if resp.status_code != 202:
-            raise RuntimeError(f"Richiesta non accettata (HTTP {resp.status_code}): {resp.text}")
+        try:
+            resp = self.session.post(URL_RICHIESTA, data=body_bytes, headers=headers, verify=True, timeout=30)
+            if resp.status_code != 202:
+                raise RuntimeError(f"Richiesta non accettata (HTTP {resp.status_code}): {resp.text}")
+        except requests.exceptions.ConnectTimeout as e:
+            print("Timeout di connessione")
+            print(f"Errore nella request: {e}")
+        except requests.exceptions.RequestException as e:
+            print(f"Errore nella request: {e}")
 
         ack = resp.json()
         return ack["identificativoRichiesta"]
@@ -427,7 +436,10 @@ class CasellarioClient:
         """
         id_confermato = self.invia_richiesta(identificativo_richiesta, nominativi)
 
+        print(id_confermato)
+        print("Attendiamo {attesa_secondi} secondi.... ",endl="")
         time.sleep(attesa_secondi)
+        print("Fatto!")
 
         esiti = self.poll_esiti()
         esiti_richiesta = [e for e in esiti if e.get("identificativoRichiesta") == id_confermato]
@@ -484,7 +496,7 @@ class CasellarioClient:
 if __name__ == "__main__":
     with open("config.yaml", "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
-    with open("private_key.pem", "r", encoding="utf-8") as f:
+    with open("../client_DTD_001.rsa.pem", "r", encoding="utf-8") as f:
         private_key = f.read()
 
     client = CasellarioClient(
