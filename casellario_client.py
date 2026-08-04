@@ -193,7 +193,7 @@ class CasellarioClient:
         headers = self._headers_comuni(URL_RICHIESTA, body_bytes, "application/json")
 
         try:
-            resp = self.session.post(URL_RICHIESTA, data=body_bytes, headers=headers, verify=True, timeout=10)
+            resp = self.session.post(URL_RICHIESTA, data=body_bytes, headers=headers, verify=False, timeout=10)
             if resp.status_code != 202:
                 raise RuntimeError(f"Richiesta non accettata (HTTP {resp.status_code}): {resp.text}")
         except requests.exceptions.ConnectTimeout as e:
@@ -370,7 +370,7 @@ if __name__ == "__main__":
 
     print("Richiesta Servizio Casellario", flush = True)
     client = CasellarioClient(
-        access_token=token.json(),
+        access_token=token.json()["access_token"],
         config=config,
         private_key=private_key,
         user_id="generic.DTD.operator",

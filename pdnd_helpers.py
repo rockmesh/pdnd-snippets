@@ -126,8 +126,8 @@ def crea_agid_jwt_signature(
         "exp": int((now + datetime.timedelta(seconds=validity_seconds)).timestamp()),
         "signed_headers": signed_headers,
     }
-    jose_headers = {"alg": alg, "typ": "JWT", "kid": kid}
-    return jwt.encode(payload, private_key, algorithm=alg, headers=jose_headers)
+    jose_headers = {"alg": Algorithms.RS256, "typ": "JWT", "kid": kid}
+    return jwt.encode(payload, private_key, algorithm=Algorithms.RS256, headers=jose_headers)
 
 
 def crea_agid_jwt_tracking_evidence(
@@ -153,12 +153,16 @@ def crea_agid_jwt_tracking_evidence(
         "exp": int((now + datetime.timedelta(seconds=validity_seconds)).timestamp()),
         "jti": str(uuid.uuid4()),
         "purposeId": purpose_id,
+        
+        "Username": user_id,
+        "UserLocation": user_location,
+        "LOA": loa,
         "userID": user_id,
         "userLocation": user_location,
         "LoA": loa,
     }
-    jose_headers = {"alg": alg, "typ": "JWT", "kid": kid}
-    return jwt.encode(payload, private_key, algorithm=alg, headers=jose_headers)
+    jose_headers = {"alg": Algorithms.RS256, "typ": "JWT", "kid": kid}
+    return jwt.encode(payload, private_key, algorithm=Algorithms.RS256, headers=jose_headers)
 
 
 def _crea_header_sicurezza(
@@ -198,6 +202,14 @@ def _crea_header_sicurezza(
         alg=security_cfg["alg"],
         private_key=private_key,
     )
+
+
+    print("\n Digest:")
+    print(digest_header)
+    print("\n Agid-JWT-Signature:")
+    print(agid_jwt_signature)
+    print("\n Agid-JWT-TrackingEvidence:")
+    print(agid_jwt_tracking_evidence)
 
     return {
         "Digest": digest_header,
