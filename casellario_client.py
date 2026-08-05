@@ -358,7 +358,12 @@ if __name__ == "__main__":
 
     #PDND setup
     print("\n==> Get Client Assertion")
+
+    #audit_rest_02 = get_audit_rest_02_add_payload
     cl_ass = pdnd.get_client_assertion(CONFIG_FILE,args.key)
+
+    print(cl_ass)
+    print("\n")
 
     print("==> Get Token: ", end="")
     token = pdnd.get_JWT_token(config, cl_ass)

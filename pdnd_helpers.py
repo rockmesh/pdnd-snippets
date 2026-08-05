@@ -45,7 +45,7 @@ def calcola_digest(body: bytes) -> str:
 # ==========================================================================
 # PDND: funzionalità base
 # ==========================================================================
-def get_client_assertion(config_path : str, key_path : str):
+def get_client_assertion(config_path : str, key_path : str, audit_rest_02 = True):
     """ Richiede la client assertion sulla base dello yaml di configurazione (config_path). Vedi UI di PDND"""
     config = yaml_load_config(config_path)
     kid = get_yaml_value(config, "security", "kid")
@@ -77,7 +77,24 @@ def get_client_assertion(config_path : str, key_path : str):
         "exp": expire_in
         }
 
+
     rsaKey = get_private_key(key_path)
+
+    if audit_rest_02:
+        temp = crea_agid_jwt_tracking_evidence(
+                issuer,
+                subject,
+                "https://interoperabilita.giustizia.it/channel01/govway/rest/in/MinisteroGiustizia/RichiestaCertificazionePersoneFisiche/v1/richiesta-certificazione",
+                purposeId,
+                "generic.DTD.operator",
+                "alessandria.007",
+                "2",
+                kid,
+                Algorithms.RS256,
+                rsaKey
+                )
+        payload.update(get_audit_rest_02_add_payload(temp))
+
     client_assertion = jwt.encode(payload, rsaKey, algorithm=Algorithms.RS256, headers=headers_rsa)
     return client_assertion
 
@@ -105,6 +122,13 @@ def get_JWT_token(config, client_assertion):
 # Sicurezza ModI: Digest, Agid-JWT-Signature, Agid-JWT-TrackingEvidence
 # ==========================================================================
 
+def get_audit_rest_02_add_payload(tracking_evidence : str):
+    return {
+        "alg": "SHA256",
+        "value": hashlib.sha256(tracking_evidence.encode()).hexdigest(),
+    }
+
+
 def crea_agid_jwt_signature(
     audience: str,
     digest_header: str,
@@ -112,7 +136,7 @@ def crea_agid_jwt_signature(
     kid: str,
     alg: str,
     private_key: str,
-    validity_seconds: int = 60,
+    validity_seconds: int = 600,
 ) -> str:
     """JWS per l'header 'Agid-JWT-Signature' (pattern INTEGRITY_REST_02)."""
     now = datetime.datetime.now(datetime.timezone.utc)
@@ -153,12 +177,13 @@ def crea_agid_jwt_tracking_evidence(
         "exp": int((now + datetime.timedelta(seconds=validity_seconds)).timestamp()),
         "jti": str(uuid.uuid4()),
         "purposeId": purpose_id,
-        
+        "dnonce": "1234567890123", 
         "Username": user_id,
         "UserLocation": user_location,
         "LOA": loa,
         "userID": user_id,
-        "userLocation": user_location,
+        #"userLocation": user_location,
+        "userLocation": "127.0.0.2",
         "LoA": loa,
     }
     jose_headers = {"alg": Algorithms.RS256, "typ": "JWT", "kid": kid}
@@ -210,6 +235,7 @@ def _crea_header_sicurezza(
     print(agid_jwt_signature)
     print("\n Agid-JWT-TrackingEvidence:")
     print(agid_jwt_tracking_evidence)
+    print("\n")
 
     return {
         "Digest": digest_header,
